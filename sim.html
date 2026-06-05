@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSA縦積みシミュレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C0D11;--panel:#14161D;--panel2:#1A1D26;--line:#2A2E3A;--line-soft:#21242F;
+  --ink:#EFEDE6;--dim:#AFB3C0;--faint:#868B9C;--gold:#D9B65A;--gold-deep:#B8943A;
+  --pos:#54C9A0;--neg:#E26B5E;--warn:#E0A04A;
+  --jp:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--jp);-webkit-font-smoothing:antialiased;line-height:1.6}
+body{background-image:radial-gradient(circle at 18% -10%,rgba(217,182,90,.06),transparent 42%),radial-gradient(circle at 100% 0%,rgba(84,201,160,.04),transparent 38%);min-height:100vh}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 18px 80px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:13px}
+.mark{width:42px;height:42px;border:1.5px solid var(--gold);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;color:var(--gold);font-size:12px;flex:0 0 auto;box-shadow:0 0 0 4px rgba(217,182,90,.06)}
+h1{font-size:18px;font-weight:600}
+.sub{font-size:12px;color:var(--dim);margin-top:1px}
+.grid2{display:grid;grid-template-columns:minmax(320px,400px) 1fr;gap:16px;align-items:start}
+@media(max-width:780px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:18px}
+.panel+.panel{margin-top:14px}
+.ptitle{font-size:12px;letter-spacing:.04em;color:var(--dim);font-weight:500;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+.ptitle::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}
+input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:var(--mono);transition:.15s}
+input:focus,select:focus{outline:none;border-color:var(--gold-deep);box-shadow:0 0 0 3px rgba(217,182,90,.12)}
+select{font-family:var(--jp);cursor:pointer}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+.field{margin-bottom:11px}
+.cardbox{background:var(--panel2);border:1px solid var(--line-soft);border-radius:10px;padding:13px;margin-bottom:13px}
+.cardname{font-size:13.5px;font-weight:500;line-height:1.4;margin-bottom:9px;word-break:break-word}
+.cardrow{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0}
+.cardrow .k{color:var(--faint)} .cardrow .v{font-family:var(--mono);color:var(--ink)}
+.seg{display:flex;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:4px}
+.segbtn{flex:1;padding:8px 4px;border-radius:6px;border:none;background:none;color:var(--dim);font-size:12.5px;font-family:var(--jp);cursor:pointer;transition:.15s;white-space:nowrap}
+.segbtn.on{background:var(--panel);color:var(--gold);box-shadow:inset 0 0 0 1px var(--line)}
+.rangerow{display:flex;align-items:center;gap:10px;margin:6px 0}
+.rangerow label{flex:0 0 120px;margin:0}
+.rangerow .val{flex:0 0 46px;text-align:right;font-family:var(--mono);color:var(--gold)}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;padding:0;border:none;height:20px}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--line);border-radius:3px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);margin-top:-6px;cursor:pointer;box-shadow:0 0 0 4px rgba(217,182,90,.15)}
+.verdict{border-radius:10px;padding:13px 16px;font-weight:600;font-size:15px;display:flex;align-items:center;gap:10px;margin-bottom:14px;border:1px solid}
+.v-pos{background:rgba(84,201,160,.1);color:var(--pos);border-color:rgba(84,201,160,.28)}
+.v-neg{background:rgba(226,107,94,.1);color:var(--neg);border-color:rgba(226,107,94,.28)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.metric{background:var(--panel2);border:1px solid var(--line-soft);border-radius:10px;padding:14px}
+.metric .k{font-size:11.5px;color:var(--dim);margin-bottom:6px}
+.metric .v{font-size:22px;font-weight:600;font-family:var(--mono);letter-spacing:-.02em}
+.metric .s{font-size:11px;color:var(--faint);font-family:var(--mono);margin-top:4px}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.goldc{color:var(--gold)}
+.bd{font-size:12.5px;color:var(--dim);line-height:1.9;margin-top:6px}
+.bd .ln{display:flex;justify-content:space-between;border-bottom:1px solid var(--line-soft);padding:3px 0}
+.bd .ln .v{font-family:var(--mono);color:var(--ink)}
+.scen{display:grid;grid-template-columns:1fr;gap:9px;margin-top:6px}
+.sbar{display:grid;grid-template-columns:88px 1fr 130px;align-items:center;gap:10px}
+.sbar .lab{font-size:12px;color:var(--dim)}
+.sbar .track{height:22px;background:var(--panel2);border-radius:5px;position:relative;overflow:hidden;border:1px solid var(--line-soft)}
+.sbar .fill{height:100%;border-radius:5px}
+.sbar .amt{text-align:right;font-family:var(--mono);font-size:13px}
+.hint{font-size:11px;color:var(--faint);margin-top:4px}
+details{margin-top:6px}summary{cursor:pointer;color:var(--dim);font-size:12.5px}
+footer{margin-top:26px;font-size:11px;color:var(--faint);text-align:center;line-height:1.7}
+a{color:var(--gold-deep)}
+#status{font-size:12px;color:var(--faint);font-family:var(--mono)}
+.flash{animation:fl 1s ease}@keyframes fl{from{background:rgba(217,182,90,.12)}to{background:transparent}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">
+    <div class="mark">PSA</div>
+    <div><h1>縦積みシミュレーター</h1><div class="sub">スニダン台帳連携 / N枚積んだら総利益いくら？</div></div>
+  </div>
+  <div id="status">データ読込中…</div>
+</header>
+
+<div class="grid2">
+  <!-- 入力 -->
+  <div>
+    <div class="panel">
+      <div class="ptitle">カード</div>
+      <div class="field">
+        <label>カード検索（名前・型番・ID）</label>
+        <input id="search" list="cards" placeholder="例: Luffy OP01 / 110085" autocomplete="off">
+        <datalist id="cards"></datalist>
+      </div>
+      <div class="cardbox" id="cardbox">
+        <div class="cardname" id="cName">— カードを選んでください —</div>
+        <div class="cardrow"><span class="k">ジャンル</span><span class="v" id="cGame">-</span></div>
+        <div class="cardrow"><span class="k">素体A</span><span class="v" id="cA">-</span></div>
+        <div class="cardrow"><span class="k">PSA10</span><span class="v" id="cP10">-</span></div>
+        <div class="cardrow"><span class="k">PSA9</span><span class="v" id="cP9">-</span></div>
+        <div class="cardrow"><span class="k">gem率(台帳)</span><span class="v" id="cGem">-</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ptitle">入力</div>
+      <div class="row">
+        <div class="field"><label>N（積む枚数）</label><input id="N" type="number" value="100" min="1" step="1"></div>
+        <div class="field"><label>gem率 (0–1)</label><input id="gem" type="number" value="0.7" min="0" max="1" step="0.01"></div>
+      </div>
+      <div class="field"><label>プラン</label>
+        <div class="seg" id="planSeg">
+          <button class="segbtn on" data-p="regular">Regular</button>
+          <button class="segbtn" data-p="express">Express</button>
+          <button class="segbtn" data-p="super">Super Express</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>売却手数料率</label><input id="fee" type="number" value="0.15" min="0" max="1" step="0.01"></div>
+        <div class="field"><label>為替 USD/JPY</label><input id="fx" type="number" value="160" step="1"></div>
+      </div>
+      <div class="rangerow"><label>シナリオ: PSA10価格 ±</label><input id="sw" type="range" min="0" max="0.6" step="0.05" value="0.3"><span class="val" id="swv">30%</span></div>
+      <div class="rangerow"><label>シナリオ: gem率 ±</label><input id="sg" type="range" min="0" max="0.4" step="0.05" value="0.1"><span class="val" id="sgv">10%</span></div>
+      <details>
+        <summary>鑑定料を調整（USD / 営業日）</summary>
+        <div style="margin-top:10px">
+          <div class="row"><div class="field"><label>Regular $</label><input id="u_reg" type="number" value="79.99" step="1"></div><div class="field"><label>Express $</label><input id="u_exp" type="number" value="149" step="1"></div></div>
+          <div class="field"><label>Super Express $</label><input id="u_se" type="number" value="349" step="1"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- 結果 -->
+  <div>
+    <div class="panel">
+      <div class="ptitle">結果（N枚を1回まとめて鑑定）</div>
+      <div class="verdict v-neg" id="verdict"><span class="dot"></span><span id="verdictTxt">—</span></div>
+      <div class="metrics">
+        <div class="metric"><div class="k">★ 最終利益（期待値）</div><div class="v num" id="mFinal">¥0</div><div class="s" id="mFinalS"></div></div>
+        <div class="metric"><div class="k">1枚あたり期待利益</div><div class="v num" id="mPer">¥0</div></div>
+        <div class="metric"><div class="k">ROI（利益 / 経費）</div><div class="v num" id="mRoi">—</div></div>
+        <div class="metric"><div class="k">予想PSA10取得</div><div class="v num" id="mGem">0</div><div class="s">枚 / N枚中</div></div>
+      </div>
+      <div class="bd">
+        <div class="ln"><span>売上（合計）</span><span class="v num" id="bRev">¥0</span></div>
+        <div class="ln"><span>経費: 仕入</span><span class="v num" id="bBuy">¥0</span></div>
+        <div class="ln"><span>経費: 鑑定</span><span class="v num" id="bGrade">¥0</span></div>
+        <div class="ln"><span>経費: 売却手数料</span><span class="v num" id="bFee">¥0</span></div>
+        <div class="ln"><span>損益分岐: 必要gem率</span><span class="v num" id="bBeGem">—</span></div>
+        <div class="ln"><span>損益分岐: 必要PSA10価格</span><span class="v num" id="bBeP10">—</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ptitle">シナリオ（最終利益）</div>
+      <div class="scen" id="scen"></div>
+      <div class="hint">悲観 = PSA10価格↓ かつ gem率↓ / 楽観 = 両方↑。振り幅は左のスライダー。</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  価格は台帳の「出品最安」。gem率はみンポケ(ポケ)/GemRate(一部)実測、無ければ既定。回転は考慮しない「1バッチの期待値」。<br>
+  前提値はすべて利用者が編集可。投資助言ではありません。
+</footer>
+</div>
+
+<script>
+var SHEET_ID="1nLKkuSyItXNh04KIJNjk8On4HCySZYdC0nJZoXoKJBk";
+var GVIZ="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:json&sheet=screening";
+var CARDS={}, BYID={}, plan="regular";
+function $(id){return document.getElementById(id);}
+function val(id){return parseFloat($(id).value)||0;}
+function yen(n){return (n<0?'-¥':'¥')+Math.round(Math.abs(n)).toLocaleString('ja-JP');}
+function man(n){return (n<0?'-':'')+Math.round(Math.abs(n)).toLocaleString('ja-JP');}
+
+function loadData(){
+  fetch(GVIZ).then(function(r){return r.text();}).then(function(t){
+    var json=JSON.parse(t.substring(t.indexOf('{'), t.lastIndexOf('}')+1));
+    var rows=json.table.rows||[];
+    var dl=$('cards'), opts='';
+    rows.forEach(function(row){
+      var c=row.c||[];
+      function v(i){return c[i]&&c[i].v!=null?c[i].v:'';}
+      var id=v(2); if(!id) return;
+      var card={id:id,game:v(0),name:v(1),url:v(3),a:+v(4)||0,p10:+v(5)||0,p9:+v(6)||0,gem:+v(10)||0};
+      BYID[String(id)]=card;
+      var key=card.name+' ['+id+']';
+      CARDS[key]=card;
+      opts+='<option value="'+key.replace(/"/g,'&quot;')+'">';
+    });
+    dl.innerHTML=opts;
+    $('status').textContent=Object.keys(BYID).length.toLocaleString('ja-JP')+'枚 読込済 ✓';
+    var qid=new URLSearchParams(location.search).get('id');
+    if(qid && BYID[String(qid)]) selectCard(BYID[String(qid)]);
+  }).catch(function(e){
+    $('status').textContent='データ読込失敗（シートを「リンクを知っている全員：閲覧可」にしてください）';
+  });
+}
+
+function selectCard(card){
+  $('cName').textContent=card.name;
+  $('cGame').textContent=card.game||'-';
+  $('cA').textContent=card.a?yen(card.a):'-';
+  $('cP10').textContent=card.p10?yen(card.p10):'-';
+  $('cP9').textContent=card.p9?yen(card.p9):'-';
+  $('cGem').textContent=card.gem?(card.gem).toFixed(2):'(無 → 既定使用)';
+  if(card.gem>0) $('gem').value=card.gem;
+  $('cardbox').classList.remove('flash');void $('cardbox').offsetWidth;$('cardbox').classList.add('flash');
+  $('search').value=card.name+' ['+card.id+']';
+  calc();
+}
+
+function feeOf(p){return {regular:val('u_reg'),express:val('u_exp'),super:val('u_se')}[p]*val('fx');}
+
+function simulate(A,P10,P9,N,gem,fee,gfee){
+  var non10=P9||A;
+  var won=Math.floor(N*Math.max(0,Math.min(1,gem)));
+  var lose=N-won;
+  var rev=won*P10+lose*non10;
+  var buy=N*A, grade=N*gfee, feeAmt=rev*fee;
+  var final=rev*(1-fee)-buy-grade;
+  var roi=(buy+grade+feeAmt)>0?final/(buy+grade+feeAmt):0;
+  var beGem=(P10-non10)!==0?(A+gfee-non10*(1-fee))/((P10-non10)*(1-fee)):null;
+  var beP10=gem>0?(A+gfee-(1-gem)*non10*(1-fee))/(gem*(1-fee)):null;
+  return {won:won,rev:rev,buy:buy,grade:grade,feeAmt:feeAmt,final:final,per:N>0?final/N:0,roi:roi,beGem:beGem,beP10:beP10};
+}
+
+function calc(){
+  var card=CARDS[$('search').value]||BYID[String($('search').value)];
+  var A=card?card.a:0, P10=card?card.p10:0, P9=card?card.p9:0;
+  var N=val('N'), gem=val('gem'), fee=val('fee'), gfee=feeOf(plan);
+  $('swv').textContent=Math.round(val('sw')*100)+'%';
+  $('sgv').textContent=Math.round(val('sg')*100)+'%';
+  if(!card||!A){$('verdictTxt').textContent='カードを選んでください';return;}
+  var r=simulate(A,P10,P9,N,gem,fee,gfee);
+  var ok=r.final>0;
+  var vd=$('verdict'); vd.className='verdict '+(ok?'v-pos':'v-neg');
+  $('verdictTxt').textContent=ok?'出し得':'見送り';
+  $('mFinal').textContent=yen(r.final); $('mFinal').className='v num '+(ok?'pos':'neg');
+  $('mFinalS').textContent='N='+N+'枚';
+  $('mPer').textContent=yen(r.per);
+  $('mRoi').textContent=(r.roi*100).toFixed(1)+'%';
+  $('mGem').textContent=r.won.toLocaleString('ja-JP');
+  $('bRev').textContent=yen(r.rev);
+  $('bBuy').textContent=yen(r.buy);
+  $('bGrade').textContent=yen(r.grade);
+  $('bFee').textContent=yen(r.feeAmt);
+  $('bBeGem').textContent=r.beGem!=null?(r.beGem*100).toFixed(1)+'%':'—';
+  $('bBeP10').textContent=r.beP10!=null?yen(r.beP10):'—';
+  // シナリオ
+  var sw=val('sw'), sg=val('sg');
+  var scen=[
+    {n:'悲観',c:'var(--neg)',r:simulate(A,P10*(1-sw),P9,N,gem*(1-sg),fee,gfee)},
+    {n:'基本',c:'var(--gold)',r:r},
+    {n:'楽観',c:'var(--pos)',r:simulate(A,P10*(1+sw),P9,N,Math.min(1,gem*(1+sg)),fee,gfee)}
+  ];
+  var mx=Math.max.apply(null,scen.map(function(s){return Math.abs(s.r.final);}))||1;
+  $('scen').innerHTML=scen.map(function(s){
+    var w=Math.max(2,Math.abs(s.r.final)/mx*100);
+    return '<div class="sbar"><span class="lab">'+s.n+'</span><div class="track"><div class="fill" style="width:'+w+'%;background:'+s.c+'"></div></div><span class="amt" style="color:'+(s.r.final<0?'var(--neg)':'var(--ink)')+'">'+yen(s.r.final)+'</span></div>';
+  }).join('');
+}
+
+document.querySelectorAll('#planSeg .segbtn').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#planSeg .segbtn').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on'); plan=b.dataset.p; calc();
+  });
+});
+$('search').addEventListener('change',function(){
+  var card=CARDS[$('search').value]; if(card) selectCard(card);
+  else if(BYID[String($('search').value)]) selectCard(BYID[String($('search').value)]);
+});
+['N','gem','fee','fx','sw','sg','u_reg','u_exp','u_se'].forEach(function(id){$(id).addEventListener('input',calc);});
+loadData();
+</script>
+</body>
+</html>
